@@ -1,9 +1,10 @@
 {
   "site": {
-    "title": "我的博客",
+    "title": "Soft98's Blog",
     "description": "这是我的个人博客，记录技术与生活",
-    "author": "博客作者",
-    "url": "https://example.com",
+    "author": "Soft98",
+    "url": "https://www.soft98.top/blog",
+    "base_path": "/myblog",
     "language": "zh-CN"
   },
   "build": {
