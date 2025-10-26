@@ -43,7 +43,11 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          if [[ -n $(git status -s md) ]]; then
+                    # 如果是手动触发或 push 事件，强制构建
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Force build triggered by ${{ github.event_name }}"
+          elif [[ -n $(git status -s md) ]]; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "Content repository has updates"
           else
