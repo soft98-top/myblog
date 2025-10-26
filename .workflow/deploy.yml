@@ -1,0 +1,76 @@
+name: Deploy Blog
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    # 每30分钟检查一次内容更新
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+      
+      - name: Setup SSH for content repo
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CONTENT_REPO_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      
+      - name: Clone/Update content repository
+        run: |
+          if [ -d "md/.git" ]; then
+            cd md
+            git pull origin main
+            cd ..
+          else
+            git clone ${{ secrets.CONTENT_REPO_URL }} md
+          fi
+      
+      - name: Check for content changes
+        id: changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          if [[ -n $(git status -s md) ]]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Content repository has updates"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No content changes detected"
+          fi
+      
+      - name: Setup Python
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      
+      - name: Install dependencies
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Generate static site
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          python gen.py
+      
+      - name: Deploy to GitHub Pages
+        if: steps.changes.outputs.changed == 'true'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          cname: ${{ secrets.CUSTOM_DOMAIN }}

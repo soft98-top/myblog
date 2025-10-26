@@ -1,0 +1,22 @@
+{
+  "site": {
+    "title": "我的博客",
+    "description": "这是我的个人博客，记录技术与生活",
+    "author": "博客作者",
+    "url": "https://example.com",
+    "language": "zh-CN"
+  },
+  "build": {
+    "output_dir": "public",
+    "theme": "default",
+    "generate_rss": true,
+    "generate_sitemap": true
+  },
+  "theme_config": {
+    "posts_per_page": 10,
+    "date_format": "%Y-%m-%d",
+    "show_toc": true,
+    "enable_tags": true,
+    "enable_archive": true
+  }
+}

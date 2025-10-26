@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}文章归档 - {{ site.title }}{% endblock %}
+
+{% block content %}
+<div class="archive-page">
+    <header class="page-header">
+        <h1 class="page-title">文章归档</h1>
+        <p class="page-description">共 {{ posts|length }} 篇文章</p>
+    </header>
+
+    <div class="archive-content">
+        {% if archive %}
+            {% for year in archive.keys()|sort(reverse=True) %}
+            <section class="archive-year">
+                <h2 class="year-title">{{ year }} 年</h2>
+                
+                {% for month in archive[year].keys()|sort(reverse=True) %}
+                <div class="archive-month">
+                    <h3 class="month-title">{{ month }} 月</h3>
+                    
+                    <ul class="archive-posts">
+                        {% for post in archive[year][month] %}
+                        <li class="archive-post-item">
+                            <time class="post-date" datetime="{{ post.date.isoformat() }}">
+                                {{ post.date.strftime('%m-%d') }}
+                            </time>
+                            <a href="/posts/{{ post.relative_path }}.html" class="post-link">
+                                {{ post.title }}
+                            </a>
+                            {% if post.tags %}
+                            <span class="post-tags-inline">
+                                {% for tag in post.tags %}
+                                <a href="/tags/{{ tag }}.html" class="tag-small">{{ tag }}</a>
+                                {% endfor %}
+                            </span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+            </section>
+            {% endfor %}
+        {% else %}
+            <div class="no-posts">
+                <p>还没有文章，开始写作吧！</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

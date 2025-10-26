@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}标签 - {{ site.title }}{% endblock %}
+
+{% block content %}
+<div class="tags-page">
+    <header class="page-header">
+        <h1 class="page-title">标签</h1>
+        <p class="page-description">共 {{ tags|length }} 个标签</p>
+    </header>
+
+    <div class="tags-cloud">
+        {% for tag_info in tags|sort(attribute='count', reverse=True) %}
+        <a href="/tags/{{ tag_info.name }}.html" class="tag-cloud-item" data-count="{{ tag_info.count }}">
+            <span class="tag-name">{{ tag_info.name }}</span>
+            <span class="tag-count">{{ tag_info.count }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="tags-list">
+        {% for tag_info in tags|sort(attribute='name') %}
+        <section class="tag-section">
+            <header class="tag-header">
+                <h2 class="tag-title">
+                    <a href="/tags/{{ tag_info.name }}.html">{{ tag_info.name }}</a>
+                </h2>
+                <span class="tag-count-badge">{{ tag_info.count }} 篇</span>
+            </header>
+            
+            <ul class="tag-posts-preview">
+                {% for post in tag_info.posts[:5] %}
+                <li class="tag-post-item">
+                    <time class="post-date" datetime="{{ post.date.isoformat() }}">
+                        {{ post.date.strftime('%Y-%m-%d') }}
+                    </time>
+                    <a href="/posts/{{ post.relative_path }}.html" class="post-link">
+                        {{ post.title }}
+                    </a>
+                </li>
+                {% endfor %}
+                {% if tag_info.count > 5 %}
+                <li class="tag-post-more">
+                    <a href="/tags/{{ tag_info.name }}.html">查看全部 {{ tag_info.count }} 篇 →</a>
+                </li>
+                {% endif %}
+            </ul>
+        </section>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site.title }} - {{ site.description }}{% endblock %}
+
+{% block content %}
+<div class="posts-list">
+    {% if posts %}
+        {% for post in posts %}
+        <article class="post-preview">
+            <header class="post-header">
+                <h2 class="post-title">
+                    <a href="/posts/{{ post.relative_path }}.html">{{ post.title }}</a>
+                </h2>
+                <div class="post-meta">
+                    <time datetime="{{ post.date.isoformat() }}">
+                        {{ post.date.strftime(config.theme_config.date_format) }}
+                    </time>
+                    {% if post.author %}
+                    <span class="post-author">by {{ post.author }}</span>
+                    {% endif %}
+                </div>
+            </header>
+            
+            {% if post.description %}
+            <div class="post-excerpt">
+                <p>{{ post.description }}</p>
+            </div>
+            {% endif %}
+            
+            {% if post.tags %}
+            <div class="post-tags">
+                {% for tag in post.tags %}
+                <a href="/tags/{{ tag }}.html" class="tag">{{ tag }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <a href="/posts/{{ post.relative_path }}.html" class="read-more">阅读全文 →</a>
+        </article>
+        {% endfor %}
+    {% else %}
+        <div class="no-posts">
+            <p>还没有文章，开始写作吧！</p>
+        </div>
+    {% endif %}
+</div>
+
+{% if pagination %}
+<nav class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ pagination.prev_url }}" class="pagination-prev">← 上一页</a>
+    {% endif %}
+    
+    <span class="pagination-info">
+        第 {{ pagination.page }} / {{ pagination.total_pages }} 页
+    </span>
+    
+    {% if pagination.has_next %}
+    <a href="{{ pagination.next_url }}" class="pagination-next">下一页 →</a>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

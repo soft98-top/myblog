@@ -1,0 +1,14 @@
+{
+  "name": "default",
+  "version": "1.0.0",
+  "author": "mblog",
+  "description": "默认主题 - 简洁、响应式的博客主题",
+  "templates": {
+    "base": "base.html",
+    "index": "index.html",
+    "post": "post.html",
+    "archive": "archive.html",
+    "tags": "tags.html",
+    "encrypted_post": "encrypted_post.html"
+  }
+}
