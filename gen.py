@@ -35,7 +35,8 @@ def main():
         
         # 处理 Markdown 文件
         print("→ 处理 Markdown 文章...")
-        processor = MarkdownProcessor("md")
+        base_path = config.get("site", {}).get("base_path", "")
+        processor = MarkdownProcessor("md", base_path=base_path)
         posts = processor.load_posts()
         print(f"  找到 {len(posts)} 篇文章")
         

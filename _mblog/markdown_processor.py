@@ -34,14 +34,16 @@ class Post:
 class MarkdownProcessor:
     """Markdown 处理器"""
     
-    def __init__(self, md_dir: str):
+    def __init__(self, md_dir: str, base_path: str = ""):
         """
         初始化 Markdown 处理器
         
         Args:
             md_dir: Markdown 文件目录路径
+            base_path: 基础路径前缀（用于子目录部署）
         """
         self.md_dir = Path(md_dir).resolve()
+        self.base_path = base_path.rstrip('/') if base_path else ""
         self.md_converter = markdown.Markdown(
             extensions=[
                 'extra',           # 支持表格、代码块等扩展语法
@@ -324,8 +326,8 @@ class MarkdownProcessor:
                     images.append(str(img_abs_path))
                     
                     # 生成新的图片路径（在输出目录中的路径）
-                    # 格式: /assets/images/{relative_path}
-                    new_img_path = f'/assets/images/{rel_to_md}'
+                    # 格式: {base_path}/assets/images/{relative_path}
+                    new_img_path = f'{self.base_path}/assets/images/{rel_to_md}'
                     
                     return f'![{alt_text}]({new_img_path})'
                 except ValueError:

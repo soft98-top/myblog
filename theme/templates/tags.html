@@ -11,7 +11,7 @@
 
     <div class="tags-cloud">
         {% for tag_info in tags|sort(attribute='count', reverse=True) %}
-        <a href="/tags/{{ tag_info.name }}.html" class="tag-cloud-item" data-count="{{ tag_info.count }}">
+        <a href="{{ url_for('/tags/' ~ tag_info.name ~ '.html') }}" class="tag-cloud-item" data-count="{{ tag_info.count }}">
             <span class="tag-name">{{ tag_info.name }}</span>
             <span class="tag-count">{{ tag_info.count }}</span>
         </a>
@@ -23,7 +23,7 @@
         <section class="tag-section">
             <header class="tag-header">
                 <h2 class="tag-title">
-                    <a href="/tags/{{ tag_info.name }}.html">{{ tag_info.name }}</a>
+                    <a href="{{ url_for('/tags/' ~ tag_info.name ~ '.html') }}">{{ tag_info.name }}</a>
                 </h2>
                 <span class="tag-count-badge">{{ tag_info.count }} 篇</span>
             </header>
@@ -34,14 +34,14 @@
                     <time class="post-date" datetime="{{ post.date.isoformat() }}">
                         {{ post.date.strftime('%Y-%m-%d') }}
                     </time>
-                    <a href="/posts/{{ post.relative_path }}.html" class="post-link">
+                    <a href="{{ url_for('/posts/' ~ post.relative_path ~ '.html') }}" class="post-link">
                         {{ post.title }}
                     </a>
                 </li>
                 {% endfor %}
                 {% if tag_info.count > 5 %}
                 <li class="tag-post-more">
-                    <a href="/tags/{{ tag_info.name }}.html">查看全部 {{ tag_info.count }} 篇 →</a>
+                    <a href="{{ url_for('/tags/' ~ tag_info.name ~ '.html') }}">查看全部 {{ tag_info.count }} 篇 →</a>
                 </li>
                 {% endif %}
             </ul>
