@@ -9,7 +9,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -59,7 +65,8 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.10'
+          cache: 'pip'
       
       - name: Install dependencies
         if: steps.changes.outputs.changed == 'true'
@@ -71,10 +78,17 @@ jobs:
         run: |
           python gen.py
       
+      - name: Setup Pages
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './public'
+      
       - name: Deploy to GitHub Pages
         if: steps.changes.outputs.changed == 'true'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
-          cname: ${{ secrets.CUSTOM_DOMAIN }}
+        id: deployment
+        uses: actions/deploy-pages@v4
