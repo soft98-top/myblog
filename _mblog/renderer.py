@@ -73,7 +73,15 @@ class Renderer:
     def _register_globals(self) -> None:
         """注册全局变量"""
         # 站点配置
-        self.env.globals['site'] = self.config.get_site_config()
+        site_config = self.config.get_site_config()
+        self.env.globals['site'] = site_config
+        
+        # 获取 base_path（用于子目录部署）
+        base_path = site_config.get('base_path', '').strip()
+        if base_path and not base_path.startswith('/'):
+            base_path = '/' + base_path
+        if base_path.endswith('/'):
+            base_path = base_path[:-1]
         
         # 完整配置（供高级使用）
         self.env.globals['config'] = self.config.data
@@ -88,14 +96,20 @@ class Renderer:
         self.env.globals['current_year'] = datetime.now().year
         
         # URL 生成函数
+        def url_for(path: str) -> str:
+            """生成页面 URL（支持 base_path）"""
+            if not path.startswith('/'):
+                path = '/' + path
+            return f'{base_path}{path}'
+        
         def url_for_static(path: str) -> str:
             """生成静态资源 URL"""
             # 确保路径以 static/ 开头
             if not path.startswith('static/'):
                 path = f'static/{path}'
-            # 返回绝对路径（从根目录开始）
-            return f'/{path}'
+            return url_for(path)
         
+        self.env.globals['url_for'] = url_for
         self.env.globals['url_for_static'] = url_for_static
     
     def _simple_hash(self, password: str) -> bytes:
@@ -191,9 +205,17 @@ class Renderer:
             end_idx = start_idx + posts_per_page
             posts = posts[start_idx:end_idx]
             
+            # 获取 base_path
+            site_config = self.config.get_site_config()
+            base_path = site_config.get('base_path', '').strip()
+            if base_path and not base_path.startswith('/'):
+                base_path = '/' + base_path
+            if base_path.endswith('/'):
+                base_path = base_path[:-1]
+            
             # 生成分页 URL
-            prev_url = '/' if page == 2 else f'/page/{page - 1}.html' if page > 1 else None
-            next_url = f'/page/{page + 1}.html' if page < total_pages else None
+            prev_url = f'{base_path}/' if page == 2 else f'{base_path}/page/{page - 1}.html' if page > 1 else None
+            next_url = f'{base_path}/page/{page + 1}.html' if page < total_pages else None
             
             pagination = {
                 'page': page,

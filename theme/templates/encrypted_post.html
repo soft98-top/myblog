@@ -20,7 +20,7 @@
         {% if post.tags %}
         <div class="post-tags">
             {% for tag in post.tags %}
-            <a href="/tags/{{ tag }}.html" class="tag">{{ tag }}</a>
+            <a href="{{ url_for('/tags/' ~ tag ~ '.html') }}" class="tag">{{ tag }}</a>
             {% endfor %}
         </div>
         {% endif %}

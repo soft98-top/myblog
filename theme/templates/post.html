@@ -20,7 +20,7 @@
         {% if post.tags %}
         <div class="post-tags">
             {% for tag in post.tags %}
-            <a href="/tags/{{ tag }}.html" class="tag">{{ tag }}</a>
+            <a href="{{ url_for('/tags/' ~ tag ~ '.html') }}" class="tag">{{ tag }}</a>
             {% endfor %}
         </div>
         {% endif %}
@@ -34,7 +34,7 @@
         <nav class="post-nav">
             {% if prev_post %}
             <div class="post-nav-item post-nav-prev">
-                <a href="/posts/{{ prev_post.relative_path }}.html">
+                <a href="{{ url_for('/posts/' ~ prev_post.relative_path ~ '.html') }}">
                     <span class="post-nav-label">← 上一篇</span>
                     <span class="post-nav-title">{{ prev_post.title }}</span>
                 </a>
@@ -43,7 +43,7 @@
 
             {% if next_post %}
             <div class="post-nav-item post-nav-next">
-                <a href="/posts/{{ next_post.relative_path }}.html">
+                <a href="{{ url_for('/posts/' ~ next_post.relative_path ~ '.html') }}">
                     <span class="post-nav-label">下一篇 →</span>
                     <span class="post-nav-title">{{ next_post.title }}</span>
                 </a>
