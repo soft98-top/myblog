@@ -53,12 +53,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.event_name }}" == "push" ]]; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "Force build triggered by ${{ github.event_name }}"
-          elif [[ -n $(git status -s md) ]]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Content repository has updates"
           else
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No content changes detected"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Content repository normaly update"
           fi
       
       - name: Setup Python
