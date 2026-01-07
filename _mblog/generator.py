@@ -361,21 +361,28 @@ class StaticGenerator:
             site_config = self.config.get_site_config()
             site_url = site_config.get('url', 'https://example.com').rstrip('/')
             
+            # 获取 base_path（用于子目录部署）
+            base_path = site_config.get('base_path', '').strip()
+            if base_path and not base_path.startswith('/'):
+                base_path = '/' + base_path
+            if base_path.endswith('/'):
+                base_path = base_path[:-1]
+            
             # RSS 头部
             rss_lines = [
                 '<?xml version="1.0" encoding="UTF-8"?>',
                 '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
                 '<channel>',
                 f'  <title>{html.escape(site_config.get("title", "博客"))}</title>',
-                f'  <link>{html.escape(site_url)}</link>',
+                f'  <link>{html.escape(site_url)}{base_path}/</link>',
                 f'  <description>{html.escape(site_config.get("description", ""))}</description>',
                 f'  <language>{site_config.get("language", "zh-CN")}</language>',
-                f'  <atom:link href="{html.escape(site_url)}/rss.xml" rel="self" type="application/rss+xml" />',
+                f'  <atom:link href="{html.escape(site_url)}{base_path}/rss.xml" rel="self" type="application/rss+xml" />',
             ]
             
             # 添加文章（最多 20 篇）
             for post in self.posts[:20]:
-                post_url = f'{site_url}/posts/{post.relative_path}.html'
+                post_url = f'{site_url}{base_path}/posts/{post.relative_path}.html'
                 pub_date = post.date.strftime('%a, %d %b %Y %H:%M:%S +0000')
                 
                 # 清理 HTML 内容作为描述
@@ -423,6 +430,13 @@ class StaticGenerator:
             site_config = self.config.get_site_config()
             site_url = site_config.get('url', 'https://example.com').rstrip('/')
             
+            # 获取 base_path（用于子目录部署）
+            base_path = site_config.get('base_path', '').strip()
+            if base_path and not base_path.startswith('/'):
+                base_path = '/' + base_path
+            if base_path.endswith('/'):
+                base_path = base_path[:-1]
+            
             # Sitemap 头部
             sitemap_lines = [
                 '<?xml version="1.0" encoding="UTF-8"?>',
@@ -432,7 +446,7 @@ class StaticGenerator:
             # 首页
             sitemap_lines.extend([
                 '  <url>',
-                f'    <loc>{html.escape(site_url)}/</loc>',
+                f'    <loc>{html.escape(site_url)}{base_path}/</loc>',
                 f'    <lastmod>{datetime.now().strftime("%Y-%m-%d")}</lastmod>',
                 '    <changefreq>daily</changefreq>',
                 '    <priority>1.0</priority>',
@@ -442,7 +456,7 @@ class StaticGenerator:
             # 归档页
             sitemap_lines.extend([
                 '  <url>',
-                f'    <loc>{html.escape(site_url)}/archive.html</loc>',
+                f'    <loc>{html.escape(site_url)}{base_path}/archive.html</loc>',
                 f'    <lastmod>{datetime.now().strftime("%Y-%m-%d")}</lastmod>',
                 '    <changefreq>weekly</changefreq>',
                 '    <priority>0.8</priority>',
@@ -452,7 +466,7 @@ class StaticGenerator:
             # 标签索引页
             sitemap_lines.extend([
                 '  <url>',
-                f'    <loc>{html.escape(site_url)}/tags/</loc>',
+                f'    <loc>{html.escape(site_url)}{base_path}/tags/</loc>',
                 f'    <lastmod>{datetime.now().strftime("%Y-%m-%d")}</lastmod>',
                 '    <changefreq>weekly</changefreq>',
                 '    <priority>0.8</priority>',
@@ -461,7 +475,7 @@ class StaticGenerator:
             
             # 所有文章
             for post in self.posts:
-                post_url = f'{site_url}/posts/{post.relative_path}.html'
+                post_url = f'{site_url}{base_path}/posts/{post.relative_path}.html'
                 lastmod = post.date.strftime('%Y-%m-%d')
                 
                 sitemap_lines.extend([
@@ -477,7 +491,7 @@ class StaticGenerator:
             tags_map = self.renderer.get_all_tags(self.posts)
             for tag in tags_map.keys():
                 tag_filename = self._sanitize_filename(tag)
-                tag_url = f'{site_url}/tags/{tag_filename}.html'
+                tag_url = f'{site_url}{base_path}/tags/{tag_filename}.html'
                 
                 sitemap_lines.extend([
                     '  <url>',
@@ -509,12 +523,20 @@ class StaticGenerator:
             import json
             from datetime import datetime
             
+            # 获取 base_path（用于子目录部署）
+            site_config = self.config.get_site_config()
+            base_path = site_config.get('base_path', '').strip()
+            if base_path and not base_path.startswith('/'):
+                base_path = '/' + base_path
+            if base_path.endswith('/'):
+                base_path = base_path[:-1]
+            
             # 构建搜索索引数据
             posts_data = []
             for post in self.posts:
                 post_data = {
                     'title': post.title,
-                    'url': f'/posts/{post.relative_path}.html',
+                    'url': f'{base_path}/posts/{post.relative_path}.html',
                     'date': post.date.isoformat(),
                     'tags': post.tags,
                     'description': post.description,
