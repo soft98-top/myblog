@@ -1,29 +1,13 @@
 /**
  * 客户端加密解密工具
- * 使用 Web Crypto API 进行 AES-CBC 解密
+ * 使用 Web Crypto API 进行 AES-GCM 解密
  */
 
-/**
- * 从密码生成密钥
- * @param {string} password - 密码
- * @returns {Promise<CryptoKey>} 密钥
- */
-async function deriveKey(password) {
-    const encoder = new TextEncoder();
-    const passwordBuffer = encoder.encode(password);
-    
-    // 使用 SHA-256 生成密钥
-    const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBuffer);
-    
-    // 导入为 AES 密钥
-    return await crypto.subtle.importKey(
-        'raw',
-        hashBuffer,
-        { name: 'AES-CBC' },
-        false,
-        ['decrypt']
-    );
-}
+// Encryption constants - must match Python constants
+const PBKDF2_ITERATIONS = 100000;
+const KEY_SIZE = 256;  // bits
+const SALT_SIZE = 16;  // bytes
+const NONCE_SIZE = 12;  // bytes
 
 /**
  * Base64 解码
@@ -40,112 +24,92 @@ function base64ToBytes(base64) {
 }
 
 /**
- * 解密内容
- * @param {string} encryptedData - 加密数据（格式: iv:encrypted_data）
- * @param {string} password - 密码
- * @returns {string} 解密后的内容
- * @throws {Error} 解密失败
+ * 从密码派生加密密钥（使用 PBKDF2）
+ * @param {string} password - 用户密码
+ * @param {Uint8Array} salt - 盐值（从加密数据中提取）
+ * @returns {Promise<CryptoKey>} 256-bit AES 密钥
  */
-function decryptContent(encryptedData, password) {
-    // 同步版本 - 使用简单的 XOR 加密（用于演示）
-    // 注意：这不是真正的 AES，只是为了演示流程
-    // 实际生产环境应该使用异步的 Web Crypto API
-    
-    try {
-        // 分离 IV 和加密数据
-        const parts = encryptedData.split(':');
-        if (parts.length !== 2) {
-            throw new Error('Invalid encrypted data format');
-        }
-        
-        const iv = base64ToBytes(parts[0]);
-        const encrypted = base64ToBytes(parts[1]);
-        
-        // 生成密钥（简化版 - 使用密码的哈希）
-        const key = simpleHash(password);
-        
-        // 解密（简化的 XOR 解密）
-        const decrypted = new Uint8Array(encrypted.length);
-        for (let i = 0; i < encrypted.length; i++) {
-            decrypted[i] = encrypted[i] ^ key[i % key.length] ^ iv[i % iv.length];
-        }
-        
-        // 移除 PKCS7 填充
-        const paddingLength = decrypted[decrypted.length - 1];
-        const unpaddedLength = decrypted.length - paddingLength;
-        
-        // 转换为字符串
-        const decoder = new TextDecoder('utf-8');
-        const result = decoder.decode(decrypted.slice(0, unpaddedLength));
-        
-        // 验证解密结果是否有效
-        if (!result || result.length === 0) {
-            throw new Error('Decryption failed');
-        }
-        
-        return result;
-    } catch (e) {
-        throw new Error('Decryption failed: ' + e.message);
-    }
-}
-
-/**
- * 简单哈希函数（用于演示）
- * @param {string} str - 输入字符串
- * @returns {Uint8Array} 哈希值
- */
-function simpleHash(str) {
+async function deriveKey(password, salt) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hash = new Uint8Array(32);
+    const passwordBuffer = encoder.encode(password);
     
-    // 简单的哈希算法（不安全，仅用于演示）
-    for (let i = 0; i < data.length; i++) {
-        hash[i % 32] ^= data[i];
-        hash[(i + 1) % 32] ^= (data[i] << 1) | (data[i] >> 7);
-    }
+    // 导入密码作为密钥材料
+    const passwordKey = await crypto.subtle.importKey(
+        'raw',
+        passwordBuffer,
+        'PBKDF2',
+        false,
+        ['deriveKey']
+    );
     
-    // 多次混合
-    for (let round = 0; round < 3; round++) {
-        for (let i = 0; i < 32; i++) {
-            hash[i] ^= hash[(i + 7) % 32];
-            hash[i] = (hash[i] << 3) | (hash[i] >> 5);
-        }
-    }
-    
-    return hash;
+    // 使用 PBKDF2 派生 AES 密钥
+    return await crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt: salt,
+            iterations: PBKDF2_ITERATIONS,
+            hash: 'SHA-256'
+        },
+        passwordKey,
+        {
+            name: 'AES-GCM',
+            length: KEY_SIZE
+        },
+        false,
+        ['decrypt']
+    );
 }
 
 /**
- * 异步解密内容（使用真正的 Web Crypto API）
- * @param {string} encryptedData - 加密数据
- * @param {string} password - 密码
- * @returns {Promise<string>} 解密后的内容
+ * 解密内容（使用 AES-GCM）
+ * @param {string} encryptedData - 加密数据（格式: "salt:nonce:ciphertext"，Base64 编码）
+ * @param {string} password - 用户密码
+ * @returns {Promise<string>} 解密后的明文
+ * @throws {Error} 如果密码错误或数据损坏
  */
-async function decryptContentAsync(encryptedData, password) {
+async function decryptContent(encryptedData, password) {
     try {
+        // 解析加密数据
         const parts = encryptedData.split(':');
-        if (parts.length !== 2) {
-            throw new Error('Invalid encrypted data format');
+        if (parts.length !== 3) {
+            throw new Error('CORRUPTED_DATA');
         }
         
-        const iv = base64ToBytes(parts[0]);
-        const encrypted = base64ToBytes(parts[1]);
+        const salt = base64ToBytes(parts[0]);
+        const nonce = base64ToBytes(parts[1]);
+        const ciphertext = base64ToBytes(parts[2]);
         
-        // 生成密钥
-        const key = await deriveKey(password);
+        // 验证大小
+        if (salt.length !== SALT_SIZE || nonce.length !== NONCE_SIZE) {
+            throw new Error('CORRUPTED_DATA');
+        }
         
-        // 解密
+        // 派生密钥
+        const key = await deriveKey(password, salt);
+        
+        // 使用 AES-GCM 解密
+        // GCM 模式会自动验证认证标签
+        // 如果密码错误，这里会抛出错误
         const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-CBC', iv: iv },
+            {
+                name: 'AES-GCM',
+                iv: nonce
+            },
             key,
-            encrypted
+            ciphertext
         );
         
-        // 转换为字符串
+        // 解码 UTF-8
         const decoder = new TextDecoder('utf-8');
         return decoder.decode(decrypted);
+        
     } catch (e) {
-        throw new Error('Decryption failed');
+        // 区分密码错误和数据损坏
+        if (e.message === 'CORRUPTED_DATA') {
+            throw new Error('CORRUPTED_DATA');
+        } else {
+            // Web Crypto API 对认证失败抛出通用错误
+            throw new Error('WRONG_PASSWORD');
+        }
     }
 }

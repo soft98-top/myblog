@@ -115,6 +115,7 @@ class StaticGenerator:
         - 归档页（可选）
         - RSS 订阅（可选）
         - Sitemap（可选）
+        - 搜索索引（可选）
         """
         print("开始生成页面...")
         
@@ -137,6 +138,9 @@ class StaticGenerator:
         # 生成 Sitemap（可选）
         if self.config.get('build.generate_sitemap', True):
             self._generate_sitemap()
+        
+        # 生成搜索索引
+        self._generate_search_index()
         
         print(f"✓ 所有页面生成完成")
     
@@ -494,3 +498,42 @@ class StaticGenerator:
             print(f"  ✓ Sitemap: sitemap.xml")
         except Exception as e:
             print(f"  跳过 Sitemap 生成: {e}")
+    
+    def _generate_search_index(self) -> None:
+        """
+        生成搜索索引 JSON 文件
+        
+        创建包含所有文章元数据的 JSON 文件，用于客户端搜索功能
+        """
+        try:
+            import json
+            from datetime import datetime
+            
+            # 构建搜索索引数据
+            posts_data = []
+            for post in self.posts:
+                post_data = {
+                    'title': post.title,
+                    'url': f'/posts/{post.relative_path}.html',
+                    'date': post.date.isoformat(),
+                    'tags': post.tags,
+                    'description': post.description,
+                    'relative_path': post.relative_path
+                }
+                posts_data.append(post_data)
+            
+            # 创建完整的索引对象
+            search_index = {
+                'posts': posts_data,
+                'generated_at': datetime.now().isoformat(),
+                'total_posts': len(posts_data)
+            }
+            
+            # 写入 JSON 文件
+            index_path = self.output_dir / 'search-index.json'
+            json_content = json.dumps(search_index, ensure_ascii=False, indent=2)
+            self._write_file(index_path, json_content)
+            
+            print(f"  ✓ 搜索索引: search-index.json ({len(posts_data)} 篇文章)")
+        except Exception as e:
+            print(f"  跳过搜索索引生成: {e}")

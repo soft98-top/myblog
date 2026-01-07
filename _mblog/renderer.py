@@ -9,10 +9,19 @@ from copy import copy
 import base64
 import os
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from .config import Config
 from .theme import Theme
 from .markdown_processor import Post
+
+# AES-GCM Encryption Constants
+PBKDF2_ITERATIONS = 100_000  # OWASP recommended minimum
+KEY_SIZE = 32  # 256 bits
+SALT_SIZE = 16  # 128 bits
+NONCE_SIZE = 12  # 96 bits (recommended for GCM)
 
 
 class RendererError(Exception):
@@ -112,66 +121,61 @@ class Renderer:
         self.env.globals['url_for'] = url_for
         self.env.globals['url_for_static'] = url_for_static
     
-    def _simple_hash(self, password: str) -> bytes:
+    def _derive_key(self, password: str, salt: bytes) -> bytes:
         """
-        简单哈希函数（与 JS 端匹配）
+        Derive a 256-bit encryption key from password using PBKDF2.
         
         Args:
-            password: 密码
-            
+            password: User's password (any length)
+            salt: Random salt (16 bytes)
+        
         Returns:
-            32 字节的哈希值
+            256-bit (32-byte) encryption key
         """
-        data = password.encode('utf-8')
-        hash_bytes = bytearray(32)
-        
-        # 简单的哈希算法
-        for i in range(len(data)):
-            hash_bytes[i % 32] ^= data[i]
-            hash_bytes[(i + 1) % 32] ^= ((data[i] << 1) | (data[i] >> 7)) & 0xFF
-        
-        # 多次混合
-        for _ in range(3):
-            for i in range(32):
-                hash_bytes[i] ^= hash_bytes[(i + 7) % 32]
-                hash_bytes[i] = ((hash_bytes[i] << 3) | (hash_bytes[i] >> 5)) & 0xFF
-        
-        return bytes(hash_bytes)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=KEY_SIZE,
+            salt=salt,
+            iterations=PBKDF2_ITERATIONS,
+        )
+        return kdf.derive(password.encode('utf-8'))
     
     def _encrypt_content(self, content: str, password: str) -> str:
         """
-        使用简化的 XOR 加密内容（与 JS 端匹配）
+        Encrypt content using AES-GCM-256.
         
         Args:
-            content: 要加密的内容
-            password: 密码
-            
+            content: Plaintext content (HTML)
+            password: User's password
+        
         Returns:
-            Base64 编码的加密数据（格式: iv:encrypted_data）
+            Encrypted data in format: "salt:nonce:ciphertext" (Base64 encoded)
         """
-        # 生成密钥
-        key = self._simple_hash(password)
+        # Generate random salt and nonce
+        salt = os.urandom(SALT_SIZE)
+        nonce = os.urandom(NONCE_SIZE)
         
-        # 生成随机 IV
-        iv = os.urandom(16)
+        # Derive key from password
+        key = self._derive_key(password, salt)
         
-        # 转换内容为字节
-        content_bytes = content.encode('utf-8')
+        # Encrypt using AES-GCM
+        cipher = Cipher(
+            algorithms.AES(key),
+            modes.GCM(nonce),
+        )
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(content.encode('utf-8')) + encryptor.finalize()
         
-        # 添加 PKCS7 填充
-        padding_length = 16 - (len(content_bytes) % 16)
-        padded_content = content_bytes + bytes([padding_length] * padding_length)
+        # GCM mode automatically includes authentication tag
+        # Tag is appended to ciphertext by the library
+        ciphertext_with_tag = ciphertext + encryptor.tag
         
-        # XOR 加密
-        encrypted = bytearray(len(padded_content))
-        for i in range(len(padded_content)):
-            encrypted[i] = padded_content[i] ^ key[i % len(key)] ^ iv[i % len(iv)]
+        # Encode components as Base64
+        salt_b64 = base64.b64encode(salt).decode('utf-8')
+        nonce_b64 = base64.b64encode(nonce).decode('utf-8')
+        ciphertext_b64 = base64.b64encode(ciphertext_with_tag).decode('utf-8')
         
-        # 返回 Base64 编码的 iv:encrypted_data
-        iv_b64 = base64.b64encode(iv).decode('utf-8')
-        encrypted_b64 = base64.b64encode(bytes(encrypted)).decode('utf-8')
-        
-        return f"{iv_b64}:{encrypted_b64}"
+        return f"{salt_b64}:{nonce_b64}:{ciphertext_b64}"
     
     def render_index(self, posts: List[Post], page: int = 1, 
                     posts_per_page: Optional[int] = None) -> str:

@@ -42,14 +42,14 @@
             </div>
             <p id="error-message" class="error-message" style="display: none;"></p>
         </div>
-
-        <div id="decrypted-content" class="post-content" style="display: none;">
-            <!-- 解密后的内容将显示在这里 -->
-        </div>
-
-        <!-- 加密数据（隐藏） -->
-        <div id="encrypted-data" data-encrypted="{{ post.html }}" style="display: none;"></div>
     </div>
+
+    <div id="decrypted-content" class="post-content" style="display: none;">
+        <!-- 解密后的内容将显示在这里 -->
+    </div>
+
+    <!-- 加密数据（隐藏） -->
+    <div id="encrypted-data" data-encrypted="{{ post.html }}" style="display: none;"></div>
 </article>
 
 <script src="{{ url_for_static('js/crypto.js') }}"></script>
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const decryptedContent = document.getElementById('decrypted-content');
     const encryptedData = document.getElementById('encrypted-data').dataset.encrypted;
 
-    function attemptDecrypt() {
+    async function attemptDecrypt() {
         const password = passwordInput.value.trim();
         
         if (!password) {
@@ -70,20 +70,36 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Show loading state
+        decryptBtn.disabled = true;
+        decryptBtn.textContent = '解密中...';
+        errorMessage.style.display = 'none';
+
         try {
-            const decrypted = decryptContent(encryptedData, password);
+            const decrypted = await decryptContent(encryptedData, password);
             
-            // 解密成功
-            passwordForm.style.display = 'none';
+            // 解密成功 - 隐藏整个密码表单容器
+            document.querySelector('.encrypted-content-wrapper').style.display = 'none';
             decryptedContent.innerHTML = decrypted;
             decryptedContent.style.display = 'block';
             
             // 保存密码到 sessionStorage（可选）
             sessionStorage.setItem('post_password_{{ post.slug }}', password);
         } catch (e) {
-            showError('密码错误，请重试');
+            // Handle different error types
+            if (e.message === 'CORRUPTED_DATA') {
+                showError('数据损坏，无法解密');
+            } else if (e.message === 'WRONG_PASSWORD') {
+                showError('密码错误，请重试');
+            } else {
+                showError('解密失败，请重试');
+            }
             passwordInput.value = '';
             passwordInput.focus();
+        } finally {
+            // Restore button state
+            decryptBtn.disabled = false;
+            decryptBtn.textContent = '解锁';
         }
     }
 
@@ -128,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #f8f9fa;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
 }
 
 .lock-icon {

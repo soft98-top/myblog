@@ -23,6 +23,20 @@
                     <li><a href="{{ url_for('/tags/') }}">标签</a></li>
                 </ul>
             </nav>
+            
+            {% block search_box %}
+            <!-- 全局搜索框 - 可在子模板中通过覆盖此 block 来隐藏 -->
+            <div class="header-search">
+                <input type="text" 
+                       id="search-input" 
+                       class="search-box" 
+                       placeholder="搜索文章... (支持 #标签 多关键字)"
+                       aria-label="搜索文章">
+                <div id="search-results" class="search-results" style="display: none;">
+                    <!-- Results populated by JavaScript -->
+                </div>
+            </div>
+            {% endblock %}
         </div>
     </header>
 
@@ -39,6 +53,7 @@
     </footer>
 
     {% block extra_scripts %}{% endblock %}
+    <script src="{{ url_for_static('js/search.js') }}"></script>
     <script src="{{ url_for_static('js/main.js') }}"></script>
 </body>
 </html>

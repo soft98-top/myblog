@@ -21,6 +21,9 @@
         
         // 添加返回顶部按钮
         initBackToTop();
+        
+        // 初始化搜索功能
+        initSearch();
     }
 
     /**
@@ -142,6 +145,109 @@
             `;
             document.head.appendChild(style);
         }
+    }
+
+    /**
+     * 初始化搜索功能
+     */
+    function initSearch() {
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        
+        // 如果页面上没有搜索框，直接返回
+        if (!searchInput || !searchResults) {
+            return;
+        }
+
+        // 获取基础路径
+        // search-index.json 在 posts/tags/page 的上一级目录
+        let indexUrl = 'search-index.json';  // 默认在当前目录
+        const currentPath = window.location.pathname;
+        
+        // 检查是否在 posts、tags 或 page 目录下
+        const specialDirs = ['posts', 'tags', 'page'];
+        let foundSpecialDir = false;
+        
+        for (const dir of specialDirs) {
+            const dirPattern = `/${dir}/`;
+            if (currentPath.includes(dirPattern)) {
+                // 找到特殊目录，提取其上一级路径
+                const dirIndex = currentPath.indexOf(dirPattern);
+                const basePath = currentPath.substring(0, dirIndex);
+                indexUrl = `${basePath}/search-index.json`;
+                foundSpecialDir = true;
+                break;
+            }
+        }
+        
+        // 如果没有找到特殊目录，使用当前目录
+        if (!foundSpecialDir) {
+            indexUrl = `${currentPath}search-index.json`;
+        }
+        
+        console.log(`Current path: ${currentPath}, Index URL: ${indexUrl}`);
+
+        // 初始化搜索引擎
+        const searchEngine = new SearchEngine(indexUrl);
+        
+        // 加载搜索索引
+        searchEngine.loadIndex()
+            .then(() => {
+                console.log('Search index loaded successfully');
+                
+                // 添加实时搜索事件监听器
+                let searchTimeout;
+                searchInput.addEventListener('input', function(e) {
+                    const query = e.target.value;
+                    
+                    // 使用防抖来避免过于频繁的搜索
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        performSearch(query);
+                    }, 150);
+                });
+
+                // 执行搜索并显示结果
+                function performSearch(query) {
+                    if (!query || query.trim().length === 0) {
+                        // 空查询时隐藏结果
+                        searchResults.style.display = 'none';
+                        searchResults.innerHTML = '';
+                        return;
+                    }
+
+                    const results = searchEngine.search(query);
+                    searchEngine.displayResults(results, '#search-results', query);
+                }
+
+                // 点击搜索结果外部时隐藏结果
+                document.addEventListener('click', function(e) {
+                    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                        searchResults.style.display = 'none';
+                    }
+                });
+
+                // 点击搜索框时，如果有内容则显示结果
+                searchInput.addEventListener('focus', function() {
+                    if (searchInput.value.trim().length > 0 && searchResults.innerHTML.trim().length > 0) {
+                        searchResults.style.display = 'block';
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Failed to load search index:', error);
+                
+                // 显示错误消息给用户
+                searchInput.disabled = true;
+                searchInput.placeholder = '搜索功能暂时不可用';
+                searchInput.setAttribute('aria-label', '搜索功能暂时不可用');
+                
+                // 在结果区域显示错误（当用户尝试使用时）
+                searchInput.addEventListener('click', function() {
+                    searchResults.innerHTML = '<div class="search-error">搜索索引加载失败，请刷新页面重试</div>';
+                    searchResults.style.display = 'block';
+                });
+            });
     }
 
     /**
