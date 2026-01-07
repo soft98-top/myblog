@@ -2,8 +2,8 @@
   "site": {
     "title": "Soft98's Blog",
     "description": "这是我的个人博客，记录技术与生活",
-    "author": "Soft98",
-    "url": "https://www.soft98.top/blog",
+    "author": "soft98-top",
+    "url": "https://apps.soft98.top/",
     "base_path": "/myblog",
     "language": "zh-CN"
   },
